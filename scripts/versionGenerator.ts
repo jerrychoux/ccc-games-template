@@ -65,7 +65,7 @@ const isValidWindowsAbsolutePath = (pathString: string) => {
 };
 
 const isValidUnixAbsolutePath = (pathString: string) => {
-  const regex = /^\/([^\x00-\x1F\x7F/]+(?:\/[^\x00-\x1F\x7F/]+)*)\/?$/;
+  const regex = /^\/([^\x00-\x1F\x7F/\\]+\/?)+$/;
   return regex.test(pathString);
 };
 
@@ -75,12 +75,11 @@ const isValidWindowsRelativePath = (pathString: string) => {
 };
 
 const isValidUnixRelativePath = (pathString: string) => {
-  const regex = /^([^\x00-\x1F\x7F/]+(?:\/[^\x00-\x1F\x7F/]+)*)\/?$/;
+  const regex = /^([^\x00-\x1F\x7F/\\]+\/?)+$/;
   return regex.test(pathString);
 };
 
 console.log(isValidWindowsAbsolutePath("c:\\a/"));
 console.log(isValidUnixAbsolutePath("/a/b/c\\"));
-
 console.log(isValidWindowsRelativePath("../.././a/"));
-console.log(isValidUnixRelativePath("a/b/c\\"));
+console.log(isValidUnixRelativePath("a/b/c/"));
