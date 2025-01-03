@@ -8,6 +8,9 @@
     "moduleResolution": "node10",
     "types": ["node"],
 
+    /* Emit */
+    "importHelpers": true,
+
     /* Interop Constraints */
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
