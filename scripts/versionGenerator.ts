@@ -20,8 +20,8 @@ interface Args {
 const defaultArgs: Partial<Args> = {
   version: "1.0.0",
   url: "http://localhost",
-  src: path.resolve(rootDir, "build/android/assets"),
-  dest: path.resolve(rootDir, "assets"),
+  src: "build/android/assets/",
+  dest: "assets/",
 };
 
 const options: Record<keyof Args, Options> = {
@@ -102,6 +102,9 @@ interface Asset {
   compressed?: boolean;
 }
 
+const src = path.resolve(rootDir, argv.src);
+const dest = path.resolve(rootDir, argv.dest);
+
 const readDir = (dir: string, obj: { [key: string]: Asset }) => {
   try {
     const state = fs.statSync(dir);
@@ -127,7 +130,7 @@ const readDir = (dir: string, obj: { [key: string]: Asset }) => {
           .update(fs.readFileSync(subPath))
           .digest("hex");
         const relativePath = encodeURI(
-          path.relative(argv.src, subPath).replace(/\\/g, "/")
+          path.relative(src, subPath).replace(/\\/g, "/")
         );
 
         obj[relativePath] = {
@@ -146,14 +149,14 @@ const readDir = (dir: string, obj: { [key: string]: Asset }) => {
   }
 };
 
-readDir(path.join(argv.src, "src"), manifest.assets);
-readDir(path.join(argv.src, "assets"), manifest.assets);
-readDir(path.join(argv.src, "jsb-adapter"), manifest.assets);
+readDir(path.join(src, "src"), manifest.assets);
+readDir(path.join(src, "assets"), manifest.assets);
+readDir(path.join(src, "jsb-adapter"), manifest.assets);
 
-const projectManifest = path.join(argv.dest, "project.manifest");
-const versionManifest = path.join(argv.dest, "version.manifest");
+const projectManifest = path.join(dest, "project.manifest");
+const versionManifest = path.join(dest, "version.manifest");
 
-fs.mkdirSync(argv.dest, { recursive: true });
+fs.mkdirSync(dest, { recursive: true });
 fs.writeFileSync(projectManifest, JSON.stringify(manifest, null, 2));
 
 type ModifiedManifest = Omit<Manifest, "assets" | "searchPaths"> & {
@@ -166,4 +169,4 @@ delete (manifest as ModifiedManifest).searchPaths;
 
 fs.writeFileSync(versionManifest, JSON.stringify(manifest, null, 2));
 
-console.log(`Manifest files generated at ${argv.dest}`);
+console.log(`Manifest files generated at ${dest}`);
