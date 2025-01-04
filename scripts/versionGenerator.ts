@@ -6,6 +6,9 @@ import { tryit } from "radash";
 
 import { isValidPath } from "./utils/path";
 import path from "path";
+
+const rootDir = path.resolve(__dirname, "..");
+
 // args
 interface Args {
   version: string;
@@ -17,8 +20,8 @@ interface Args {
 const defaultArgs: Partial<Args> = {
   version: "1.0.0",
   url: "http://localhost",
-  src: "./jsb/",
-  dest: "./remote-assets/",
+  src: path.resolve(rootDir, "build/android/assets"),
+  dest: path.resolve(rootDir, "assets"),
 };
 
 const options: Record<keyof Args, Options> = {
@@ -99,7 +102,7 @@ interface Asset {
   compressed?: boolean;
 }
 
-const readAssets = (dir: string, obj: { [key: string]: Asset }) => {
+const readDir = (dir: string, obj: { [key: string]: Asset }) => {
   try {
     const state = fs.statSync(dir);
     if (!state.isDirectory()) {
@@ -116,14 +119,13 @@ const readAssets = (dir: string, obj: { [key: string]: Asset }) => {
       const subPath = path.join(dir, subdir);
       const state = fs.statSync(subPath);
       if (state.isDirectory()) {
-        readAssets(subPath, obj);
+        readDir(subPath, obj);
       } else if (state.isFile()) {
         const size = state.size;
         const md5 = crypto
           .createHash("md5")
           .update(fs.readFileSync(subPath))
           .digest("hex");
-        const compressed = path.extname(subdir) === ".zip";
         const relativePath = encodeURI(
           path.relative(argv.src, subPath).replace(/\\/g, "/")
         );
@@ -132,6 +134,8 @@ const readAssets = (dir: string, obj: { [key: string]: Asset }) => {
           size,
           md5,
         };
+
+        const compressed = path.extname(subdir).toLowerCase() === ".zip";
         if (compressed) {
           obj[relativePath].compressed = true;
         }
@@ -142,15 +146,15 @@ const readAssets = (dir: string, obj: { [key: string]: Asset }) => {
   }
 };
 
-readAssets(path.join(argv.src, "src"), manifest.assets);
-readAssets(path.join(argv.src, "assets"), manifest.assets);
-readAssets(path.join(argv.src, "jsb-adapter"), manifest.assets);
+readDir(path.join(argv.src, "src"), manifest.assets);
+readDir(path.join(argv.src, "assets"), manifest.assets);
+readDir(path.join(argv.src, "jsb-adapter"), manifest.assets);
 
-const destPath = path.join(argv.dest, "project.manifest");
-const versionPath = path.join(argv.dest, "version.manifest");
+const projectManifest = path.join(argv.dest, "project.manifest");
+const versionManifest = path.join(argv.dest, "version.manifest");
 
 fs.mkdirSync(argv.dest, { recursive: true });
-fs.writeFileSync(destPath, JSON.stringify(manifest, null, 2));
+fs.writeFileSync(projectManifest, JSON.stringify(manifest, null, 2));
 
 type ModifiedManifest = Omit<Manifest, "assets" | "searchPaths"> & {
   assets?: Manifest["assets"];
@@ -160,6 +164,6 @@ type ModifiedManifest = Omit<Manifest, "assets" | "searchPaths"> & {
 delete (manifest as ModifiedManifest).assets;
 delete (manifest as ModifiedManifest).searchPaths;
 
-fs.writeFileSync(versionPath, JSON.stringify(manifest, null, 2));
+fs.writeFileSync(versionManifest, JSON.stringify(manifest, null, 2));
 
 console.log(`Manifest files generated at ${argv.dest}`);
