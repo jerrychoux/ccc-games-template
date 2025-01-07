@@ -1,0 +1,26 @@
+{
+  "$schema": "./@types/schema/package/index.json",
+  "package_version": 2,
+  "name": "inject-hot-update-after-build",
+  "version": "1.0.0",
+  "license": "MIT",
+  "author": "Cocos Creator",
+  "editor": ">=3.8.3",
+  "scripts": {
+    "preinstall": "node ./scripts/preinstall.js",
+    "build": "tsc"
+  },
+  "title": "i18n:inject-hot-update-after-build.title",
+  "description": "i18n:inject-hot-update-after-build.description",
+  "contributions": {
+    "builder": "./dist/builder.js"
+  },
+  "dependencies": {
+    "fs-extra": "^10.0.0"
+  },
+  "devDependencies": {
+    "@cocos/creator-types": "^3.8.3",
+    "@types/fs-extra": "^5.0.4",
+    "@types/node": "^18.17.1"
+  }
+}
