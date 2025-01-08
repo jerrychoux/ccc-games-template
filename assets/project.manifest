@@ -61,12 +61,12 @@
       "md5": "e72c2bc5a4d655d2043e3069a50394e4"
     },
     "jsb-adapter/engine-adapter.js": {
-      "size": 165506,
-      "md5": "cca45fb1d1f9314fea2fdc9b75a28f75"
+      "size": 165755,
+      "md5": "57c82ff181418305440b963563f77e2d"
     },
     "jsb-adapter/web-adapter.js": {
-      "size": 173209,
-      "md5": "02debda41d112e77b7449a2e0cd7cde6"
+      "size": 173258,
+      "md5": "87b924e2c660376f298964846e02efca"
     }
   },
   "searchPaths": []

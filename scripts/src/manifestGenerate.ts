@@ -1,13 +1,13 @@
 import * as fs from "fs";
 import * as crypto from "crypto";
 import * as semver from "semver";
+import path from "path";
 import yargs, { Arguments, Options } from "yargs";
 import { tryit } from "radash";
 
 import { isValidPath } from "./utils/path";
-import path from "path";
 
-const rootDir = path.resolve(__dirname, "..");
+const rootDir = path.resolve(__dirname, "../../");
 
 // args
 interface Args {
