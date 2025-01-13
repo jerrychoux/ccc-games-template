@@ -1,7 +1,7 @@
 import { NATIVE } from "cc/env";
 import { game, native } from "cc";
 import { _decorator, Asset, Component } from "cc";
-import CombinedComponent from "./CombinedComponent";
+import HotUpdateInfoComp from "./HotUpdateInfoComp";
 const { ccclass, property } = _decorator;
 
 interface PromiseHandlers {
@@ -9,13 +9,13 @@ interface PromiseHandlers {
   reject: (reason?: any) => void;
 }
 
-@ccclass("HotUpdate")
-export default class HotUpdate extends Component {
+@ccclass("HotUpdateComp")
+export default class HotUpdateComp extends Component {
   @property(Asset)
   projectManifest: Asset = null;
 
-  @property(CombinedComponent)
-  combinedComponent?: CombinedComponent = null;
+  @property(HotUpdateInfoComp)
+  infoComponent?: HotUpdateInfoComp = null;
 
   private canRetry = false;
   private storagePath = "";
