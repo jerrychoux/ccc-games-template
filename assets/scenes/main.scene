@@ -352,7 +352,7 @@
       "__uuid__": "6e04fb9a-c933-4747-a472-d105afd0aa67",
       "__expectedType__": "cc.Asset"
     },
-    "infoComponent": {
+    "msgProgressComp": {
       "__id__": 11
     },
     "_id": "93OtZX1XRDuLwafGpNtDIz"

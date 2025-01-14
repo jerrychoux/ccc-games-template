@@ -1,9 +1,10 @@
 import { _decorator } from "cc";
-import HotUpdateInfoComp from "./HotUpdateInfoComp";
+import HotUpdateMsgProgressComp, { Progress } from "./HotUpdateMsgProgressComp";
+
 const { ccclass } = _decorator;
 
 @ccclass("SampleComp")
-export default class SampleComp extends HotUpdateInfoComp {
-  onProgress(progress: number): void {}
+export default class SampleComp extends HotUpdateMsgProgressComp {
   onMessage(message: string): void {}
+  onProgress(progress: Progress): void {}
 }

@@ -1,7 +1,7 @@
 import { NATIVE } from "cc/env";
 import { game, native } from "cc";
 import { _decorator, Asset, Component } from "cc";
-import HotUpdateInfoComp from "./HotUpdateInfoComp";
+import HotUpdateMsgProgressComp from "./HotUpdateMsgProgressComp";
 const { ccclass, property } = _decorator;
 
 interface PromiseHandlers {
@@ -14,8 +14,8 @@ export default class HotUpdateComp extends Component {
   @property(Asset)
   projectManifest: Asset = null;
 
-  @property(HotUpdateInfoComp)
-  infoComponent?: HotUpdateInfoComp = null;
+  @property(HotUpdateMsgProgressComp)
+  msgProgressComp?: HotUpdateMsgProgressComp = null;
 
   private canRetry = false;
   private storagePath = "";
@@ -150,6 +150,26 @@ export default class HotUpdateComp extends Component {
         break;
 
       case native.EventAssetsManager.UPDATE_PROGRESSION:
+        const byteProgress = arg.getPercent();
+        const fileProgress = arg.getPercentByFile();
+        const downloadedFiles = arg.getDownloadedFiles();
+        const downloadedBytes = arg.getDownloadedBytes();
+        const totalFiles = arg.getTotalFiles();
+        const totalBytes = arg.getTotalBytes();
+        const message = arg.getMessage();
+
+        this.msgProgressComp?.onProgress({
+          fileProgress,
+          byteProgress,
+          downloadedFiles,
+          downloadedBytes,
+          totalFiles,
+          totalBytes,
+        });
+
+        if (message) {
+          this.msgProgressComp?.onMessage(message);
+        }
         break;
 
       case native.EventAssetsManager.ERROR_DOWNLOAD_MANIFEST:
