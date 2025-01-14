@@ -1,13 +1,9 @@
 import { NATIVE } from "cc/env";
 import { game, native } from "cc";
 import { _decorator, Asset, Component } from "cc";
-import HotUpdateMsgProgressComp from "./HotUpdateMsgProgressComp";
+import HotUpdateMsgProgressComp, { Progress } from "./HotUpdateMsgProgressComp";
+import { PromiseHandlers } from "./PromiseHandlers";
 const { ccclass, property } = _decorator;
-
-interface PromiseHandlers {
-  resolve: () => void;
-  reject: (reason?: any) => void;
-}
 
 @ccclass("HotUpdateComp")
 export default class HotUpdateComp extends Component {
@@ -22,7 +18,7 @@ export default class HotUpdateComp extends Component {
   private assetManager: native.AssetsManager = null;
 
   private updating: Promise<void> | null = null;
-  private updatingHandlers: PromiseHandlers | null = null;
+  private updatingHandlers: PromiseHandlers<void> | null = null;
 
   protected onLoad(): void {
     if (!NATIVE) {
@@ -48,9 +44,11 @@ export default class HotUpdateComp extends Component {
     }
   }
 
-  check() {
+  checkUpdate() {
     if (this.updating) {
-      return Promise.reject(new Error("Update is already in progress"));
+      return Promise.reject(
+        new Error("check or update is already in progress")
+      );
     }
 
     if (this.assetManager.getState() === native.AssetsManager.State.UNINITED) {
@@ -79,6 +77,8 @@ export default class HotUpdateComp extends Component {
     if (this.assetManager) {
     }
   }
+
+  retry() {}
 
   private versionCompareHandle(versionA: string, versionB: string): number {
     console.log(
@@ -119,91 +119,126 @@ export default class HotUpdateComp extends Component {
   }
 
   private checkingCallback(arg: native.EventAssetsManager) {
-    console.log("Code: " + arg.getEventCode());
+    let failed = false;
+    let message = undefined;
+
     switch (arg.getEventCode()) {
       case native.EventAssetsManager.ERROR_NO_LOCAL_MANIFEST:
+        message = "No local manifest file found, hot update skipped.";
+        failed = true;
         break;
       case native.EventAssetsManager.ERROR_DOWNLOAD_MANIFEST:
       case native.EventAssetsManager.ERROR_PARSE_MANIFEST:
+        message = "Fail to download manifest file, hot update skipped.";
+        failed = true;
         break;
       case native.EventAssetsManager.ALREADY_UP_TO_DATE:
+        message = "Already up to date with the latest remote version.";
+        failed = true;
         break;
       case native.EventAssetsManager.NEW_VERSION_FOUND:
+        message =
+          "New version found, please try to update. (" +
+          Math.ceil(this.assetManager.getTotalBytes() / 1024) +
+          "kb)";
         break;
-
       default:
         break;
     }
 
-    this.assetManager.setEventCallback(null);
-    this.updatingHandlers.reject(new Error(""));
-    this.updatingHandlers = null;
-    this.updating = null;
+    if (message) {
+      this.msgProgressComp?.onMessage(message);
+    }
+
+    if (failed) {
+      this.assetManager.setEventCallback(null);
+      this.updatingHandlers.reject();
+      this.updatingHandlers = null;
+      this.updating = null;
+    } else {
+      this.assetManager.setEventCallback(null);
+      this.updatingHandlers.resolve();
+      this.updatingHandlers = null;
+      this.updating = null;
+    }
   }
 
   private updatingCallback(arg: native.EventAssetsManager) {
     let needRestart = false;
     let failed = false;
+    let message = undefined;
+    let progress = undefined;
+
     switch (arg.getEventCode()) {
       case native.EventAssetsManager.ERROR_NO_LOCAL_MANIFEST:
+        message = "No local manifest file found, hot update skipped.";
         failed = true;
         break;
-
       case native.EventAssetsManager.UPDATE_PROGRESSION:
+        message = arg.getMessage();
         const byteProgress = arg.getPercent();
         const fileProgress = arg.getPercentByFile();
         const downloadedFiles = arg.getDownloadedFiles();
         const downloadedBytes = arg.getDownloadedBytes();
         const totalFiles = arg.getTotalFiles();
         const totalBytes = arg.getTotalBytes();
-        const message = arg.getMessage();
-
-        this.msgProgressComp?.onProgress({
+        progress = {
           fileProgress,
           byteProgress,
           downloadedFiles,
           downloadedBytes,
           totalFiles,
           totalBytes,
-        });
-
-        if (message) {
-          this.msgProgressComp?.onMessage(message);
-        }
+        } as Progress;
         break;
-
       case native.EventAssetsManager.ERROR_DOWNLOAD_MANIFEST:
       case native.EventAssetsManager.ERROR_PARSE_MANIFEST:
+        message = "Fail to download manifest file, hot update skipped.";
         failed = true;
         break;
-
       case native.EventAssetsManager.ALREADY_UP_TO_DATE:
+        message = "Already up to date with the latest remote version.";
         failed = true;
         break;
-
       case native.EventAssetsManager.UPDATE_FINISHED:
+        message = "Update finished. " + arg.getMessage();
         needRestart = true;
         break;
-
       case native.EventAssetsManager.UPDATE_FAILED:
+        message = "Update failed. " + arg.getMessage();
+        failed = true;
+        this.canRetry = true;
         break;
-
       case native.EventAssetsManager.ERROR_UPDATING:
+        message = `Asset update error: ${arg.getAssetId()}, ${arg.getMessage()}`;
         break;
-
       case native.EventAssetsManager.ERROR_DECOMPRESS:
+        message = arg.getMessage();
         break;
-
       default:
         break;
     }
 
+    if (message) {
+      this.msgProgressComp?.onMessage(message);
+    }
+
+    if (progress) {
+      this.msgProgressComp?.onProgress(progress);
+    }
+
     if (failed) {
       this.assetManager.setEventCallback(null);
+      this.updatingHandlers.reject();
+      this.updatingHandlers = null;
+      this.updating = null;
     }
 
     if (needRestart) {
       this.assetManager.setEventCallback(null);
+      this.updatingHandlers.resolve();
+      this.updatingHandlers = null;
+      this.updating = null;
 
       const searchPaths = native.fileUtils.getSearchPaths();
       const newPaths = this.assetManager.getLocalManifest().getSearchPaths();
