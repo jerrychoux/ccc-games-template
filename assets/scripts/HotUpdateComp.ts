@@ -23,10 +23,13 @@ export default class HotUpdateComp extends Component {
   @property(CCInteger)
   maxConcurrentTask: number = 4;
 
+  @property(CCInteger)
+  maxRetryCount: number = 5;
+
   @property(HotUpdateMsgProgressComp)
   msgProgressComp?: HotUpdateMsgProgressComp = null;
 
-  private canRetry = false;
+  private retryCount = 0;
   private storagePath = "";
   private assetManager: native.AssetsManager = null;
 
@@ -204,6 +207,7 @@ export default class HotUpdateComp extends Component {
   private updatingCallback(arg: native.EventAssetsManager) {
     let successed = false;
     let failed = false;
+    let retry = false;
     let message = undefined;
     let progress = undefined;
 
@@ -243,9 +247,17 @@ export default class HotUpdateComp extends Component {
         successed = true;
         break;
       case native.EventAssetsManager.UPDATE_FAILED:
-        message = "Update failed. " + arg.getMessage();
-        failed = true;
-        this.canRetry = true;
+        if (this.retryCount > this.maxRetryCount) {
+          this.retryCount = 0;
+          message = `Update failed. ${arg.getMessage()}. Please try again later.`;
+          failed = true;
+        } else {
+          this.retryCount++;
+          message = `Update failed. ${arg.getMessage()}. Will try again ${
+            this.retryCount
+          }.`;
+          retry = true;
+        }
         break;
       case native.EventAssetsManager.ERROR_UPDATING:
         message = `Asset update error: ${arg.getAssetId()}, ${arg.getMessage()}`;
@@ -265,6 +277,10 @@ export default class HotUpdateComp extends Component {
       this.msgProgressComp?.onProgress(progress);
     }
 
+    if (retry) {
+      this.scheduleOnce(() => this.assetManager.downloadFailedAssets(), 1);
+    }
+
     if (failed) {
       this.assetManager.setEventCallback(null);
       this.updatingHandlers.reject(new Error(message));
@@ -278,15 +294,16 @@ export default class HotUpdateComp extends Component {
       this.updatingHandlers = null;
       this.updating = null;
 
-      const searchPaths = native.fileUtils.getSearchPaths();
+      let searchPaths = native.fileUtils.getSearchPaths();
       const newPaths = this.assetManager.getLocalManifest().getSearchPaths();
-      console.log(JSON.stringify(newPaths));
-      Array.prototype.unshift.apply(searchPaths, newPaths);
+      searchPaths = [...newPaths, ...searchPaths];
+      searchPaths = Array.from(new Set(searchPaths));
 
       localStorage.setItem("HotUpdateSearchPaths", JSON.stringify(searchPaths));
       native.fileUtils.setSearchPaths(searchPaths);
 
-      setTimeout(() => game.restart(), 1000);
+      // restart game
+      this.scheduleOnce(() => game.restart(), 0);
     }
   }
 }
