@@ -1,14 +1,27 @@
 import { NATIVE } from "cc/env";
-import { game, native } from "cc";
-import { _decorator, Asset, Component } from "cc";
+import {
+  _decorator,
+  game,
+  native,
+  path,
+  Asset,
+  Component,
+  sys,
+  CCInteger,
+} from "cc";
+import * as semver from "semver";
+import * as cryptoJS from "crypto-js";
 import HotUpdateMsgProgressComp, { Progress } from "./HotUpdateMsgProgressComp";
-import { PromiseHandlers } from "./PromiseHandlers";
+import { PromiseHandler } from "./PromiseHandler";
 const { ccclass, property } = _decorator;
 
 @ccclass("HotUpdateComp")
 export default class HotUpdateComp extends Component {
   @property(Asset)
   projectManifest: Asset = null;
+
+  @property(CCInteger)
+  maxConcurrentTask: number = 4;
 
   @property(HotUpdateMsgProgressComp)
   msgProgressComp?: HotUpdateMsgProgressComp = null;
@@ -17,8 +30,11 @@ export default class HotUpdateComp extends Component {
   private storagePath = "";
   private assetManager: native.AssetsManager = null;
 
+  private checking: Promise<number> | null = null;
+  private checkingHandlers: PromiseHandler<number> | null = null;
+
   private updating: Promise<void> | null = null;
-  private updatingHandlers: PromiseHandlers<void> | null = null;
+  private updatingHandlers: PromiseHandler<void> | null = null;
 
   protected onLoad(): void {
     if (!NATIVE) {
@@ -34,9 +50,18 @@ export default class HotUpdateComp extends Component {
       this.versionCompareHandle
     );
     this.assetManager.setVerifyCallback(this.verifyCallback);
+    if (sys.os === sys.OS.ANDROID) {
+      this.assetManager.setMaxConcurrentTask(this.maxConcurrentTask);
+    }
   }
 
   protected onDestroy(): void {
+    if (this.checking) {
+      this.assetManager.setEventCallback(null);
+      this.checkingHandlers = null;
+      this.checking = null;
+    }
+
     if (this.updating) {
       this.assetManager.setEventCallback(null);
       this.updatingHandlers = null;
@@ -44,8 +69,12 @@ export default class HotUpdateComp extends Component {
     }
   }
 
-  checkUpdate() {
-    if (this.updating) {
+  get isChecking() {
+    return !!this.checking;
+  }
+
+  doCheck() {
+    if (this.isChecking || this.isUpdating) {
       return Promise.reject(
         new Error("check or update is already in progress")
       );
@@ -66,6 +95,32 @@ export default class HotUpdateComp extends Component {
     this.assetManager.setEventCallback(this.checkingCallback);
     this.assetManager.checkUpdate();
 
+    this.checking = new Promise<number>((resolve, reject) => {
+      this.checkingHandlers = { resolve, reject };
+    });
+
+    return this.checking;
+  }
+
+  get isUpdating() {
+    return !!this.updating;
+  }
+
+  doUpdate() {
+    if (this.isChecking || this.isUpdating) {
+      return Promise.reject(
+        new Error("check or update is already in progress")
+      );
+    }
+
+    if (this.assetManager.getState() === native.AssetsManager.State.UNINITED) {
+      const url = this.projectManifest.nativeUrl;
+      this.assetManager.loadLocalManifest(url);
+    }
+
+    this.assetManager.setEventCallback(this.updatingCallback);
+    this.assetManager.update();
+
     this.updating = new Promise<void>((resolve, reject) => {
       this.updatingHandlers = { resolve, reject };
     });
@@ -73,54 +128,44 @@ export default class HotUpdateComp extends Component {
     return this.updating;
   }
 
-  hotUpdate() {
-    if (this.assetManager) {
-    }
-  }
-
-  retry() {}
-
   private versionCompareHandle(versionA: string, versionB: string): number {
-    console.log(
-      `JS Custom Version Compare: version A is ${versionA}, version B is ${versionB}`
-    );
-
-    const vA = versionA.split(".");
-    const vB = versionB.split(".");
-
-    for (let i = 0; i < vA.length; i++) {
-      const a = parseInt(vA[i]);
-      const b = parseInt(vB[i] || "0");
-      if (a === b) {
-        continue;
-      } else {
-        return a - b;
-      }
-    }
-
-    if (vB.length > vA.length) {
-      return -1;
-    }
-
-    return 0;
+    return semver.compare(versionA, versionB);
   }
 
-  private verifyCallback(path: string, asset: native.ManifestAsset): boolean {
+  private verifyCallback(_: string, asset: native.ManifestAsset): boolean {
     const compressed = asset.compressed;
-    const expectedMD5 = asset.md5;
     const relativePath = asset.path;
-    const size = asset.size;
 
     if (compressed) {
       return true;
     }
 
-    return true;
+    const ext = path.extname(relativePath);
+    if (ext === ".manifest") {
+      return true;
+    }
+
+    const filePath = path.join(
+      native.fileUtils.getWritablePath(),
+      "remote-asset-temp",
+      relativePath
+    );
+
+    if (native.fileUtils.isFileExist(filePath)) {
+      const data = native.fileUtils.getDataFromFile(filePath);
+      const wordArry = cryptoJS.lib.WordArray.create(data);
+      const md5 = cryptoJS.MD5(wordArry).toString();
+
+      return md5 === asset.md5;
+    }
+
+    return false;
   }
 
   private checkingCallback(arg: native.EventAssetsManager) {
     let failed = false;
     let message = undefined;
+    let totalBytes = 0;
 
     switch (arg.getEventCode()) {
       case native.EventAssetsManager.ERROR_NO_LOCAL_MANIFEST:
@@ -137,34 +182,27 @@ export default class HotUpdateComp extends Component {
         failed = true;
         break;
       case native.EventAssetsManager.NEW_VERSION_FOUND:
-        message =
-          "New version found, please try to update. (" +
-          Math.ceil(this.assetManager.getTotalBytes() / 1024) +
-          "kb)";
+        totalBytes = this.assetManager.getTotalBytes();
         break;
       default:
         break;
     }
 
-    if (message) {
-      this.msgProgressComp?.onMessage(message);
-    }
-
     if (failed) {
       this.assetManager.setEventCallback(null);
-      this.updatingHandlers.reject();
-      this.updatingHandlers = null;
-      this.updating = null;
+      this.checkingHandlers.reject(new Error(message));
+      this.checkingHandlers = null;
+      this.checking = null;
     } else {
       this.assetManager.setEventCallback(null);
-      this.updatingHandlers.resolve();
-      this.updatingHandlers = null;
-      this.updating = null;
+      this.checkingHandlers.resolve(totalBytes);
+      this.checkingHandlers = null;
+      this.checking = null;
     }
   }
 
   private updatingCallback(arg: native.EventAssetsManager) {
-    let needRestart = false;
+    let successed = false;
     let failed = false;
     let message = undefined;
     let progress = undefined;
@@ -202,7 +240,7 @@ export default class HotUpdateComp extends Component {
         break;
       case native.EventAssetsManager.UPDATE_FINISHED:
         message = "Update finished. " + arg.getMessage();
-        needRestart = true;
+        successed = true;
         break;
       case native.EventAssetsManager.UPDATE_FAILED:
         message = "Update failed. " + arg.getMessage();
@@ -229,12 +267,12 @@ export default class HotUpdateComp extends Component {
 
     if (failed) {
       this.assetManager.setEventCallback(null);
-      this.updatingHandlers.reject();
+      this.updatingHandlers.reject(new Error(message));
       this.updatingHandlers = null;
       this.updating = null;
     }
 
-    if (needRestart) {
+    if (successed) {
       this.assetManager.setEventCallback(null);
       this.updatingHandlers.resolve();
       this.updatingHandlers = null;
@@ -248,9 +286,7 @@ export default class HotUpdateComp extends Component {
       localStorage.setItem("HotUpdateSearchPaths", JSON.stringify(searchPaths));
       native.fileUtils.setSearchPaths(searchPaths);
 
-      setTimeout(() => {
-        game.restart();
-      }, 1000);
+      setTimeout(() => game.restart(), 1000);
     }
   }
 }
