@@ -7,20 +7,24 @@ const { ccclass, property } = _decorator;
 @ccclass("SampleComp")
 export default class SampleComp extends HotUpdateMsgProgressComp {
   @property(HotUpdateComp)
-  hotUpdateComp: HotUpdateComp = null;
+  hotUpdateComp!: HotUpdateComp;
 
-  private checkButton: Button;
-  private updateButton: Button;
-  private messageLabel: Label;
-  private progressBar: ProgressBar;
+  private checkButton!: Button;
+  private updateButton!: Button;
+  private messageLabel!: Label;
+  private progressBar!: ProgressBar;
 
   protected onLoad(): void {
-    this.checkButton = this.node.getChildByName("Button").getComponent(Button);
+    this.checkButton = this.node
+      .getChildByName("Button")!
+      .getComponent(Button)!;
     this.updateButton = this.node
-      .getChildByName("Button-001")
-      .getComponent(Button);
-    this.messageLabel = find("Label", this.node).getComponent(Label);
-    this.progressBar = find("ProgressBar", this.node).getComponent(ProgressBar);
+      .getChildByName("Button-001")!
+      .getComponent(Button)!;
+    this.messageLabel = find("Label", this.node)!.getComponent(Label)!;
+    this.progressBar = find("ProgressBar", this.node)!.getComponent(
+      ProgressBar
+    )!;
 
     this.checkButton.node.on("click", this.onCheckButtonClick, this);
     this.updateButton.node.on("click", this.onUpdateButtonClick, this);
