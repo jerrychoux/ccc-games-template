@@ -13,12 +13,13 @@ import * as semver from "semver";
 import * as cryptoJS from "crypto-js";
 import HotUpdateMsgProgressComp, { Progress } from "./HotUpdateMsgProgressComp";
 import { PromiseHandler } from "./PromiseHandler";
+import { noop } from "./func";
 const { ccclass, property } = _decorator;
 
 @ccclass("HotUpdateComp")
 export default class HotUpdateComp extends Component {
   @property(Asset)
-  projectManifest: Asset = null;
+  projectManifest!: Asset;
 
   @property(CCInteger)
   maxConcurrentTask: number = 4;
@@ -27,11 +28,11 @@ export default class HotUpdateComp extends Component {
   maxRetryCount: number = 5;
 
   @property(HotUpdateMsgProgressComp)
-  msgProgressComp?: HotUpdateMsgProgressComp = null;
+  msgProgressComp!: HotUpdateMsgProgressComp;
 
   private retryCount = 0;
   private storagePath = "";
-  private assetManager: native.AssetsManager = null;
+  private assetManager!: native.AssetsManager;
 
   private checking: Promise<number> | null = null;
   private checkingHandlers: PromiseHandler<number> | null = null;
@@ -60,13 +61,13 @@ export default class HotUpdateComp extends Component {
 
   protected onDestroy(): void {
     if (this.checking) {
-      this.assetManager.setEventCallback(null);
+      this.assetManager.setEventCallback(noop);
       this.checkingHandlers = null;
       this.checking = null;
     }
 
     if (this.updating) {
-      this.assetManager.setEventCallback(null);
+      this.assetManager.setEventCallback(noop);
       this.updatingHandlers = null;
       this.updating = null;
     }
@@ -192,13 +193,13 @@ export default class HotUpdateComp extends Component {
     }
 
     if (failed) {
-      this.assetManager.setEventCallback(null);
-      this.checkingHandlers.reject(new Error(message));
+      this.assetManager.setEventCallback(noop);
+      this.checkingHandlers?.reject(new Error(message));
       this.checkingHandlers = null;
       this.checking = null;
     } else {
-      this.assetManager.setEventCallback(null);
-      this.checkingHandlers.resolve(totalBytes);
+      this.assetManager.setEventCallback(noop);
+      this.checkingHandlers?.resolve(totalBytes);
       this.checkingHandlers = null;
       this.checking = null;
     }
@@ -282,15 +283,15 @@ export default class HotUpdateComp extends Component {
     }
 
     if (failed) {
-      this.assetManager.setEventCallback(null);
-      this.updatingHandlers.reject(new Error(message));
+      this.assetManager.setEventCallback(noop);
+      this.updatingHandlers?.reject(new Error(message));
       this.updatingHandlers = null;
       this.updating = null;
     }
 
     if (successed) {
-      this.assetManager.setEventCallback(null);
-      this.updatingHandlers.resolve();
+      this.assetManager.setEventCallback(noop);
+      this.updatingHandlers?.resolve();
       this.updatingHandlers = null;
       this.updating = null;
 
