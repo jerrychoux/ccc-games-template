@@ -11,6 +11,7 @@ import {
 } from "cc";
 import semver from "semver";
 import cryptoJS from "crypto-js";
+import { debounce } from "radash";
 import HotUpdateMsgProgressComp, { Progress } from "./HotUpdateMsgProgressComp";
 import { PromiseHandler } from "./PromiseHandler";
 import { noop } from "./func";
@@ -39,6 +40,18 @@ export default class HotUpdateComp extends Component {
 
   private updating: Promise<void> | null = null;
   private updatingHandlers: PromiseHandler<void> | null = null;
+
+  private checkingDebouncedAction: ReturnType<typeof debounce> = debounce(
+    { delay: 5000 },
+    () => {
+      this.assetManager.setEventCallback(noop);
+      this.checkingHandlers?.reject(
+        new Error("Check update request timed out. Please try again later.")
+      );
+      this.checkingHandlers = null;
+      this.checking = null;
+    }
+  );
 
   protected onLoad(): void {
     if (!NATIVE) {
@@ -104,6 +117,8 @@ export default class HotUpdateComp extends Component {
 
     this.assetManager.setEventCallback(this.checkingCallback.bind(this));
     this.assetManager.checkUpdate();
+
+    this.checkingDebouncedAction();
 
     this.checking = new Promise<number>((resolve, reject) => {
       this.checkingHandlers = { resolve, reject };
@@ -182,6 +197,8 @@ export default class HotUpdateComp extends Component {
     let failed = false;
     let message = undefined;
     let totalBytes = 0;
+
+    this.checkingDebouncedAction.cancel();
 
     switch (arg.getEventCode()) {
       case native.EventAssetsManager.ERROR_NO_LOCAL_MANIFEST:
