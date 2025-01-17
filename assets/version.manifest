@@ -1,6 +1,6 @@
 {
-  "packageUrl": "http://localhost",
-  "remoteManifestUrl": "http://localhost/project.manifest",
-  "remoteVersionUrl": "http://localhost/version.manifest",
+  "packageUrl": "http://localhost:8080",
+  "remoteManifestUrl": "http://localhost:8080/project.manifest",
+  "remoteVersionUrl": "http://localhost:8080/version.manifest",
   "version": "1.0.0"
 }

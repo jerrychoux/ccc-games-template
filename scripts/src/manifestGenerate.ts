@@ -19,7 +19,7 @@ interface Args {
 
 const defaultArgs: Partial<Args> = {
   version: "1.0.0",
-  url: "http://localhost",
+  url: "http://localhost:8080",
   src: "build/android/assets/",
   dest: "assets/",
 };

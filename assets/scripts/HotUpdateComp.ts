@@ -9,8 +9,8 @@ import {
   sys,
   CCInteger,
 } from "cc";
-import * as semver from "semver";
-import * as cryptoJS from "crypto-js";
+import semver from "semver";
+import cryptoJS from "crypto-js";
 import HotUpdateMsgProgressComp, { Progress } from "./HotUpdateMsgProgressComp";
 import { PromiseHandler } from "./PromiseHandler";
 import { noop } from "./func";
@@ -78,9 +78,15 @@ export default class HotUpdateComp extends Component {
   }
 
   doCheck() {
+    if (!NATIVE) {
+      return Promise.reject(
+        new Error("The check feature is only supported on native platforms")
+      );
+    }
+
     if (this.isChecking || this.isUpdating) {
       return Promise.reject(
-        new Error("check or update is already in progress")
+        new Error("Check or update is already in progress")
       );
     }
 
@@ -96,7 +102,7 @@ export default class HotUpdateComp extends Component {
       return Promise.reject(new Error("Failed to load local manifest"));
     }
 
-    this.assetManager.setEventCallback(this.checkingCallback);
+    this.assetManager.setEventCallback(this.checkingCallback.bind(this));
     this.assetManager.checkUpdate();
 
     this.checking = new Promise<number>((resolve, reject) => {
@@ -111,6 +117,12 @@ export default class HotUpdateComp extends Component {
   }
 
   doUpdate() {
+    if (!NATIVE) {
+      return Promise.reject(
+        new Error("The update feature is only supported on native platforms")
+      );
+    }
+
     if (this.isChecking || this.isUpdating) {
       return Promise.reject(
         new Error("check or update is already in progress")
@@ -122,7 +134,7 @@ export default class HotUpdateComp extends Component {
       this.assetManager.loadLocalManifest(url);
     }
 
-    this.assetManager.setEventCallback(this.updatingCallback);
+    this.assetManager.setEventCallback(this.updatingCallback.bind(this));
     this.assetManager.update();
 
     this.updating = new Promise<void>((resolve, reject) => {
