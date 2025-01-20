@@ -19,11 +19,11 @@ export default class SampleComp extends HotUpdateMsgProgressComp {
   private progressBar!: ProgressBar;
 
   private throttledCheckButtonClick = throttle(
-    { interval: 5000 },
+    { interval: 200 },
     this.onCheckButtonClick.bind(this)
   );
   private throttledUpdateButtonClick = throttle(
-    { interval: 5000 },
+    { interval: 200 },
     this.onUpdateButtonClick.bind(this)
   );
 
