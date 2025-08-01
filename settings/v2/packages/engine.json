@@ -2,11 +2,11 @@
   "__version__": "1.0.12",
   "modules": {
     "graphics": {
-      "pipeline": "legacy-pipeline"
+      "pipeline": "custom-pipeline"
     },
     "configs": {
-      "migrationsConfig": {
-        "name": "迁移生成的配置",
+      "defaultConfig": {
+        "name": "默认配置",
         "cache": {
           "base": {
             "_value": true
@@ -24,7 +24,7 @@
             "_value": true
           },
           "skeletal-animation": {
-            "_value": false
+            "_value": true
           },
           "3d": {
             "_value": false
@@ -48,7 +48,7 @@
             "_value": true
           },
           "ui-skew": {
-            "_value": false
+            "_value": true
           },
           "affine-transform": {
             "_value": true
@@ -64,7 +64,7 @@
             "_option": "physics-ammo"
           },
           "physics-ammo": {
-            "_value": false,
+            "_value": true,
             "_flags": {
               "LOAD_BULLET_MANUALLY": false
             }
@@ -86,7 +86,7 @@
             "_option": "physics-2d-box2d"
           },
           "physics-2d-box2d": {
-            "_value": false
+            "_value": true
           },
           "physics-2d-box2d-wasm": {
             "_value": false,
@@ -125,16 +125,16 @@
             "_value": true
           },
           "video": {
-            "_value": true
+            "_value": false
           },
           "webview": {
-            "_value": true
+            "_value": false
           },
           "tween": {
             "_value": true
           },
           "websocket": {
-            "_value": false
+            "_value": true
           },
           "websocket-server": {
             "_value": false
@@ -168,10 +168,10 @@
             }
           },
           "dragon-bones": {
-            "_value": true
+            "_value": false
           },
           "marionette": {
-            "_value": false
+            "_value": true
           },
           "procedural-animation": {
             "_value": false
@@ -181,7 +181,7 @@
           },
           "render-pipeline": {
             "_value": true,
-            "_option": "legacy-pipeline"
+            "_option": "custom-pipeline"
           },
           "custom-pipeline": {
             "_value": true
@@ -190,30 +190,33 @@
             "_value": false
           }
         },
-        "flags": {},
+        "flags": {
+          "LOAD_SPINE_MANUALLY": false
+        },
         "includeModules": [
           "2d",
           "affine-transform",
           "animation",
           "audio",
           "base",
-          "dragon-bones",
+          "custom-pipeline",
           "gfx-webgl",
           "gfx-webgl2",
           "graphics",
           "intersection-2d",
-          "legacy-pipeline",
+          "marionette",
           "mask",
           "particle-2d",
           "physics-2d-box2d",
           "profiler",
           "rich-text",
+          "skeletal-animation",
           "spine-3.8",
           "tiled-map",
           "tween",
           "ui",
-          "video",
-          "webview"
+          "ui-skew",
+          "websocket"
         ],
         "noDeprecatedFeatures": {
           "value": false,
@@ -221,6 +224,6 @@
         }
       }
     },
-    "globalConfigKey": "migrationsConfig"
+    "globalConfigKey": "defaultConfig"
   }
 }

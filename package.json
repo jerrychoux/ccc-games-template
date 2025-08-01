@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "crypto-js": "^4.2.0",
+    "pako": "^2.1.0",
     "protobufjs": "^7.4.0",
     "radash": "^12.1.0",
     "semver": "^7.6.3"
