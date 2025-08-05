@@ -1,13 +1,13 @@
 import { IArchitecture } from "./interfaces/IArchitecture";
 import { ICommand } from "./interfaces/ICommand";
-import { IConstructable } from "./interfaces/IConstructor";
 import { IModel, ModelSymbol } from "./interfaces/IModel";
 import { IQuery } from "./interfaces/IQuery";
 import { ISystem, SystemSymbol } from "./interfaces/ISystem";
 import { IUnRegisterList } from "./interfaces/ITypeEventSystem";
 import { IUtility } from "./interfaces/IUtility";
 import { IOCContainer } from "./IOC";
-import { AbstractConstructor, Action } from "./types/Common";
+import { TypeEventSystem } from "./TypeEventSystem";
+import { AbstractConstructor, Action, Constructor } from "./types/Common";
 
 export abstract class Architecture<T extends Architecture<T>>
   implements IArchitecture
@@ -36,7 +36,7 @@ export abstract class Architecture<T extends Architecture<T>>
     Architecture.onRegisterPatch?.(instance);
 
     instance.container
-      .getInstancesBySymbol<IModel>(ModelSymbol)
+      .getInstances<IModel>(ModelSymbol)
       .filter((model) => !model.initialized)
       .forEach((model) => {
         model.init();
@@ -44,7 +44,7 @@ export abstract class Architecture<T extends Architecture<T>>
       });
 
     instance.container
-      .getInstancesBySymbol<ISystem>(SystemSymbol)
+      .getInstances<ISystem>(SystemSymbol)
       .filter((system) => !system.initialized)
       .forEach((system) => {
         system.init();
@@ -57,48 +57,96 @@ export abstract class Architecture<T extends Architecture<T>>
 
   protected abstract init(): void;
 
+  deinit(): void {
+    this.onDeinit();
+
+    this.container
+      .getInstances<IModel>(ModelSymbol)
+      .filter((model) => model.initialized)
+      .forEach((model) => model.deinit());
+
+    this.container
+      .getInstances<ISystem>(SystemSymbol)
+      .filter((system) => system.initialized)
+      .forEach((system) => system.deinit());
+
+    this.container.clear();
+    Architecture.instances.delete(this.constructor as AbstractConstructor<any>);
+  }
+
   protected onDeinit(): void {}
 
   private container = new IOCContainer();
 
-  registerSystem<T>(system: T): ISystem {
-    throw new Error("Method not implemented.");
+  registerSystem(system: ISystem): void {
+    system.setArchitecture(this);
+    this.container.register(system);
+
+    if (this.inited) {
+      system.init();
+      system.initialized = true;
+    }
   }
-  registerModel<T>(model: T): IModel {
-    throw new Error("Method not implemented.");
+
+  registerModel(model: IModel): void {
+    model.setArchitecture(this);
+    this.container.register(model);
+
+    if (this.inited) {
+      model.init();
+      model.initialized = true;
+    }
   }
-  registerUtility<T>(utility: T): IUtility {
-    throw new Error("Method not implemented.");
+
+  registerUtility(utility: IUtility): void {
+    this.container.register(utility);
   }
-  getSystem<T extends ISystem>(): T {
-    throw new Error("Method not implemented.");
+
+  getSystem = <T extends ISystem>(ctor: Constructor<T>): T =>
+    this.container.getInstance(ctor);
+
+  getModel = <T extends IModel>(ctor: Constructor<T>): T =>
+    this.container.getInstance(ctor);
+
+  getUtility = <T extends IUtility>(ctor: Constructor<T>): T =>
+    this.container.getInstance(ctor);
+
+  protected executeCommand(command: ICommand) {
+    command.setArchitecture(this);
+    command.execute();
   }
-  getModel<T extends IModel>(): T {
-    throw new Error("Method not implemented.");
-  }
-  getUtility<T extends IUtility>(): T {
-    throw new Error("Method not implemented.");
-  }
+
   sendCommand<T extends ICommand>(command: T): void;
-  sendCommand<TResult>(command: ICommand<TResult>): TResult;
-  sendCommand<TResult>(command: unknown): void | TResult {
-    throw new Error("Method not implemented.");
+  sendCommand<T>(command: ICommand<T>): T;
+  sendCommand<T>(command: ICommand<T>): void | T {
+    this.executeCommand(command);
   }
-  sendQuery<TResult>(query: IQuery<TResult>): TResult {
-    throw new Error("Method not implemented.");
+
+  protected doQuery<T>(query: IQuery<T>) {
+    query.setArchitecture(this);
+    return query.do();
   }
+
+  sendQuery<T>(query: IQuery<T>): T {
+    return this.doQuery(query);
+  }
+
+  private typeEventSystem = new TypeEventSystem();
+
   sendEvent<T extends new (...args: any[]) => any>(): void;
   sendEvent<T>(event: T): void;
   sendEvent(event?: unknown): void {
     throw new Error("Method not implemented.");
   }
+  // sendEvent<T>(ctor: Constructor<T>): void;
+  // sendEvent<T>(event: T): void;
+  // sendEvent(event?: unknown): void {
+  //   throw new Error("Method not implemented.");
+  // }
   registerEvent<T>(onEvent: Action<T>): IUnRegisterList {
     throw new Error("Method not implemented.");
   }
   unRegisterEvent<T>(onEvent: Action<T>): void {
-    throw new Error("Method not implemented.");
-  }
-  deinit(): void {
     throw new Error("Method not implemented.");
   }
 }
