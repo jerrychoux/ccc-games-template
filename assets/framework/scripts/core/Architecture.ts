@@ -1,14 +1,66 @@
 import { IArchitecture } from "./interfaces/IArchitecture";
 import { ICommand } from "./interfaces/ICommand";
-import { IModel } from "./interfaces/IModel";
+import { IConstructable } from "./interfaces/IConstructor";
+import { IModel, ModelSymbol } from "./interfaces/IModel";
 import { IQuery } from "./interfaces/IQuery";
-import { ISystem } from "./interfaces/ISystem";
+import { ISystem, SystemSymbol } from "./interfaces/ISystem";
 import { IUnRegisterList } from "./interfaces/ITypeEventSystem";
 import { IUtility } from "./interfaces/IUtility";
+import { IOCContainer } from "./IOC";
+import { AbstractConstructor, Action } from "./types/Common";
 
 export abstract class Architecture<T extends Architecture<T>>
   implements IArchitecture
 {
+  private inited = false;
+
+  static onRegisterPatch?: <T extends Architecture<T>>(instance: T) => void;
+
+  protected static readonly instances = new Map<
+    AbstractConstructor<any>,
+    Architecture<any>
+  >();
+
+  static get interface(): IArchitecture {
+    if (!this.instances.has(this)) this.initArchitecture();
+    return this.instances.get(this)!;
+  }
+
+  protected static initArchitecture<C extends Architecture<C>>(
+    this: AbstractConstructor<C>
+  ): void {
+    // @ts-expect-error
+    const instance = new this() as C;
+    instance.init();
+
+    Architecture.onRegisterPatch?.(instance);
+
+    instance.container
+      .getInstancesBySymbol<IModel>(ModelSymbol)
+      .filter((model) => !model.initialized)
+      .forEach((model) => {
+        model.init();
+        model.initialized = true;
+      });
+
+    instance.container
+      .getInstancesBySymbol<ISystem>(SystemSymbol)
+      .filter((system) => !system.initialized)
+      .forEach((system) => {
+        system.init();
+        system.initialized = true;
+      });
+
+    instance.inited = true;
+    Architecture.instances.set(this, instance);
+  }
+
+  protected abstract init(): void;
+
+  protected onDeinit(): void {}
+
+  private container = new IOCContainer();
+
   registerSystem<T>(system: T): ISystem {
     throw new Error("Method not implemented.");
   }
