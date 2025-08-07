@@ -1,13 +1,32 @@
-import { IArchitecture } from "./interfaces/IArchitecture";
-import { ICommand } from "./interfaces/ICommand";
-import { IModel, ModelSymbol } from "./interfaces/IModel";
-import { IQuery } from "./interfaces/IQuery";
-import { ISystem, SystemSymbol } from "./interfaces/ISystem";
-import { IUnRegisterList } from "./interfaces/ITypeEventSystem";
-import { IUtility } from "./interfaces/IUtility";
+import type { AbstractConstructor, Action, Constructor } from "./Common";
+import type { ICommand } from "./Command";
+import type { IUtility } from "./Utility";
+import type { IQuery } from "./Query";
+import type { IUnRegisterList } from "./Event";
+import { SystemSymbol, type ISystem } from "./System";
+import { ModelSymbol, type IModel } from "./Model";
 import { IOCContainer } from "./IOC";
-import { TypeEventSystem } from "./TypeEventSystem";
-import { AbstractConstructor, Action, Constructor } from "./types/Common";
+
+export interface IArchitecture {
+  registerSystem(system: ISystem): void;
+  registerModel(model: IModel): void;
+  registerUtility(utility: IUtility): void;
+
+  getSystem<T extends ISystem>(ctor: Constructor<T>): T;
+  getModel<T extends IModel>(ctor: Constructor<T>): T;
+  getUtility<T extends IUtility>(ctor: Constructor<T>): T;
+
+  sendCommand<T extends ICommand>(command: T): void;
+  sendCommand<T>(command: ICommand<T>): T;
+  sendQuery<T>(query: IQuery<T>): T;
+  sendEvent<T extends new (...args: any[]) => any>(): void;
+  sendEvent<T>(event: T): void;
+
+  registerEvent<T>(onEvent: Action<T>): IUnRegisterList;
+  unRegisterEvent<T>(onEvent: Action<T>): void;
+
+  deinit(): void;
+}
 
 export abstract class Architecture<T extends Architecture<T>>
   implements IArchitecture
@@ -130,8 +149,6 @@ export abstract class Architecture<T extends Architecture<T>>
   sendQuery<T>(query: IQuery<T>): T {
     return this.doQuery(query);
   }
-
-  private typeEventSystem = new TypeEventSystem();
 
   sendEvent<T extends new (...args: any[]) => any>(): void;
   sendEvent<T>(event: T): void;

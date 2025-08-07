@@ -1,5 +1,37 @@
-import { IEvent } from "./interfaces/IEvent";
-import { Constructor } from "./types/Common";
+import { Action, Constructor } from "./Common";
+import { List } from "linq-collections";
+
+export interface IUnRegister {
+  unRegister(): void;
+}
+
+export interface IUnRegisterList {
+  readonly unRegisterList: List<IUnRegister>;
+}
+
+export function addToUnRegisterList(unReg: IUnRegister, list: IUnRegisterList) {
+  list.unRegisterList.push(unReg);
+}
+
+export function UnRegisterAll(list: IUnRegisterList) {
+  list.unRegisterList.forEach((value) => value.unRegister());
+  list.unRegisterList.clear();
+}
+
+export interface IEvent {
+  register(onEvent: Action): IUnRegister;
+}
+
+export class Event implements IEvent {
+  private handles = new Set<Action>();
+  register(onEvent: Action): IUnRegister {
+    this.handles.add(onEvent);
+    return new CustomUnRegister(() => this.unRegister(onEvent));
+  }
+  unRegister(onEvent: Action) {
+    this.handles.delete(onEvent);
+  }
+}
 
 export class Events {
   private static readonly globalEvents = new Events();

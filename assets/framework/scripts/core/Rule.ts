@@ -1,4 +1,4 @@
-import { IArchitecture } from "./IArchitecture";
+import type { IArchitecture } from "./Architecture";
 
 export interface ICanInit {
   initialized: boolean;

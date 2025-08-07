@@ -1,8 +1,7 @@
-import { IConstructable } from "./interfaces/IConstructor";
-import { Constructor } from "./types/Common";
+import type { Constructor } from "./types/Constructor";
 
 export class IOCContainer {
-  private readonly instances = new Map<IConstructable<unknown>, unknown>();
+  private readonly instances = new Map<Constructor<unknown>, unknown>();
 
   register = <T extends object>(instance: T) =>
     this.instances.set(Object.getPrototypeOf(instance).constructor, instance);
